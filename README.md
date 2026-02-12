@@ -38,6 +38,87 @@ Real-time prediction and binary options in Web3 need **strong security** (deposi
 
 Treasury is a **wallet address** (not a smart contract) per chain: you send funds to it for deposits; the server uses the treasury private key to send funds on withdrawals.
 
+### Architecture overview
+
+```mermaid
+flowchart TB
+    subgraph User["👤 User"]
+        Wallet[Wallet]
+    end
+
+    subgraph Frontend["Frontend (Next.js)"]
+        UI[React UI]
+        Store[Zustand Store]
+        UI --> Store
+    end
+
+    subgraph Backend["Backend"]
+        API[Next.js API Routes]
+    end
+
+    subgraph External["External Services"]
+        Pyth[Pyth Network<br/>Price Feeds]
+        Supabase[(Supabase<br/>Balances & Audit)]
+    end
+
+    subgraph Chains["Chains"]
+        Polygon[Polygon]
+        BNB[BNB Chain]
+        Solana[Solana]
+    end
+
+    Wallet <-->|ConnectKit / Adapter| Frontend
+    Frontend -->|REST| API
+    API --> Supabase
+    Frontend -.->|Hermes API| Pyth
+    API -->|Withdraw / Treasury| Polygon
+    API -->|Withdraw / Treasury| BNB
+    API -->|Withdraw / Treasury| Solana
+    User -->|Deposit tx| Polygon
+    User -->|Deposit tx| BNB
+    User -->|Deposit tx| Solana
+```
+
+### User flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant API as Backend API
+    participant S as Supabase
+    participant P as Pyth
+    participant T as Treasury (Chain)
+
+    U->>F: Connect wallet (Polygon/BNB/Solana)
+    F->>API: GET balance
+    API->>S: Fetch balance
+    S-->>F: Balance
+
+    U->>T: Send deposit tx (POL/BNB/SOL)
+    U->>F: Submit deposit proof
+    F->>API: POST deposit
+    API->>S: Credit balance
+    S-->>F: Updated balance
+
+    loop Bet round
+        F->>P: Poll price
+        P-->>F: Price
+        U->>F: Place bet (amount, direction/cell)
+        F->>API: POST bet
+        API->>S: Debit & record bet
+        Note over F,P: Round resolves with Pyth price
+        F->>API: POST win (if won)
+        API->>S: Credit winnings
+    end
+
+    U->>F: Request withdraw
+    F->>API: POST withdraw
+    API->>S: Check balance, debit
+    API->>T: Send tx to user address
+    T-->>U: Funds received
+```
+
 ---
 
 ## Tech stack
@@ -50,6 +131,41 @@ Treasury is a **wallet address** (not a smart contract) per chain: you send fund
 | **Prices** | Pyth Network (Hermes API); POL, BNB, BTC, ETH, SOL, forex, stocks, etc. |
 | **Backend** | Next.js API routes, Supabase (PostgreSQL) for balances and audit |
 | **Charts** | Custom LiveChart with asset switcher and grid/classic modes |
+
+### System components
+
+```mermaid
+graph LR
+    subgraph Client["Client"]
+        Next[Next.js]
+        React[React 19]
+        Zustand[Zustand]
+        Next --> React --> Zustand
+    end
+
+    subgraph EVM["EVM"]
+        ConnectKit[ConnectKit]
+        Wagmi[Wagmi]
+        Viem[Viem]
+        ConnectKit --> Wagmi --> Viem
+    end
+
+    subgraph Solana["Solana"]
+        Adapter[Wallet Adapter]
+        Web3[web3.js]
+        Adapter --> Web3
+    end
+
+    subgraph Data["Data & Prices"]
+        PythAPI[Pyth Hermes]
+        SupabaseDB[(Supabase)]
+    end
+
+    Client --> EVM
+    Client --> Solana
+    Client --> PythAPI
+    Client --> SupabaseDB
+```
 
 ---
 
@@ -93,7 +209,8 @@ Configure in `.env`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID (ConnectKit) |
 | **Polygon (primary)** | |
-| `NEXT_PUBLIC_POLYGON_RPC_URL` | Optional; default `https://polygon-rpc.com` |
+| `NEXT_PUBLIC_POLYGON_RPC_URL` | Optional; default `https://polygon-rpc.com` (client) |
+| `POLYGON_RPC_URL` | Optional; server-side RPC for withdrawals (falls back to public URL if unset) |
 | `NEXT_PUBLIC_POLYGON_TREASURY_ADDRESS` | Treasury wallet address (receives deposits) |
 | `POLYGON_TREASURY_SECRET_KEY` | Treasury private key (server-only; for withdrawals) |
 | **BNB** | |
@@ -128,6 +245,50 @@ Open [http://localhost:3000](http://localhost:3000).
 ---
 
 ## Project structure
+
+```mermaid
+flowchart TD
+    subgraph app["app/"]
+        layout["layout.tsx"]
+        page["page.tsx"]
+        providers["providers.tsx"]
+        api["api/balance/"]
+        api --> get["[address] GET"]
+        api --> deposit["deposit POST"]
+        api --> withdraw["withdraw POST"]
+        api --> bet["bet POST"]
+        api --> win["win POST"]
+        api --> payout["payout POST"]
+    end
+
+    subgraph components["components/"]
+        balance["balance/"]
+        game["game/"]
+        history["history/"]
+        tour["tour/"]
+        wallet["wallet/"]
+        ui["ui/"]
+    end
+
+    subgraph lib["lib/"]
+        polygon["polygon/"]
+        bnb["bnb/"]
+        solana["solana/"]
+        store["store/"]
+        supabase["supabase/"]
+        utils["utils/"]
+    end
+
+    subgraph data["Data & config"]
+        migrations["supabase/migrations/"]
+        types["types/"]
+        contracts["contracts/"]
+    end
+
+    app --> components
+    app --> lib
+    lib --> data
+```
 
 ```
 Polynomo/
@@ -166,6 +327,29 @@ Polynomo/
 ---
 
 ## API overview
+
+```mermaid
+flowchart LR
+    subgraph Balance["Balance API"]
+        GET["GET /api/balance/[address]"]
+        DEP["POST deposit"]
+        WDR["POST withdraw"]
+        BET["POST bet"]
+        WIN["POST win / payout"]
+    end
+
+    Client[Client] --> GET
+    Client --> DEP
+    Client --> WDR
+    Client --> BET
+    Client --> WIN
+    GET --> DB[(Supabase)]
+    DEP --> DB
+    WDR --> DB
+    WDR --> Treasury[Treasury Wallet]
+    BET --> DB
+    WIN --> DB
+```
 
 | Method | Path | Purpose |
 |--------|------|---------|
