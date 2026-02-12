@@ -29,6 +29,21 @@ Real-time prediction and binary options in Web3 need **strong security** (deposi
 
 ---
 
+## Competitive landscape
+
+| Dimension | Polynomo | Typical Web3 prediction / binary apps |
+|-----------|----------|--------------------------------------|
+| **Chains** | Polygon (primary), BNB, Solana — one app, one house balance | Usually single-chain (e.g. Ethereum or one L2) |
+| **Bet UX** | House balance: deposit once, bet many times; no per-bet wallet signature | Often sign every trade (wallet popup per bet) or fully on-chain tx per round |
+| **Prices** | Pyth Network (institutional-grade, multi-asset: crypto, forex, stocks) | Chainlink, custom oracles, or CEX-based; often crypto-only |
+| **Settlement** | Instant resolution off-chain; deposits/withdrawals on-chain | Varies: full on-chain (slow, costly) or hybrid like us |
+| **Game modes** | Classic (higher/lower), Box (grid cells), Blitz (2× rounds) | Mostly simple up/down or single-game focus |
+| **Custody** | Treasury wallet per chain (simple, fast); optional future upgrade to escrow contracts | Escrow smart contracts (more trust, more gas) or fully custodial |
+
+**Summary** — Polynomo focuses on **multi-chain UX** (POL, BNB, SOL in one place), **no per-bet signing** (house balance), and **Pyth-powered** resolution across crypto and traditional assets. Competing products tend to be single-chain, require a signature per bet, or rely on less diverse price feeds.
+
+---
+
 ## How it works
 
 1. **Connect** — Choose Polygon (primary), BNB, or Solana and connect your wallet.
