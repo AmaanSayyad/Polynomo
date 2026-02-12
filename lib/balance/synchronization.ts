@@ -45,7 +45,18 @@ export async function checkBalanceSynchronization(
   contractAddress: string
 ): Promise<SyncCheckResult> {
   const timestamp = new Date();
-  
+
+  if (!supabase) {
+    return {
+      synchronized: false,
+      supabaseTotal: 0,
+      escrowVaultBalance: 0,
+      discrepancy: 0,
+      timestamp,
+      error: 'Supabase client not configured'
+    };
+  }
+
   try {
     // Query total of all user_balances from Supabase
     const { data: balances, error: queryError } = await supabase
@@ -127,7 +138,19 @@ export async function reconcileUserBalance(
   dryRun: boolean = false
 ): Promise<ReconcileResult> {
   const timestamp = new Date();
-  
+
+  if (!supabase) {
+    return {
+      success: false,
+      userAddress,
+      oldBalance: 0,
+      newBalance: 0,
+      discrepancy: 0,
+      timestamp,
+      error: 'Supabase client not configured'
+    };
+  }
+
   try {
     // Query user's current balance from Supabase
     const { data: userData, error: queryError } = await supabase
@@ -191,6 +214,11 @@ export async function reconcileAllUsers(
   dryRun: boolean = false,
   discrepancyThreshold: number = 0.00000001
 ): Promise<ReconcileResult[]> {
+  if (!supabase) {
+    console.error('Supabase client not configured');
+    return [];
+  }
+
   try {
     // Query all users from Supabase
     const { data: users, error: queryError } = await supabase

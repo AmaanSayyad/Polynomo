@@ -67,10 +67,11 @@ export const createBalanceSlice: StateCreator<BalanceState> = (set, get) => ({
       }
 
       const data = (await parseJsonResponse(response)) as { balance?: number; tier?: string };
+      const validTier = data.tier === 'standard' || data.tier === 'vip' ? data.tier : 'free';
 
       set({
         houseBalance: data.balance || 0,
-        userTier: data.tier || 'free',
+        userTier: validTier,
         isLoading: false,
         error: null
       });
@@ -185,7 +186,7 @@ export const createBalanceSlice: StateCreator<BalanceState> = (set, get) => ({
    */
   withdrawFunds: async (address: string, amount: number) => {
     const formattedAddress = address;
-    const { network } = get();
+    const network = (get() as { network?: 'POLYGON' | 'BNB' | 'SOL' | null }).network;
 
     try {
       set({ isLoading: true, error: null });
