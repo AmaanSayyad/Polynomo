@@ -6,7 +6,7 @@
 
 | Link | URL |
 |------|-----|
-| **Live app** | []() |
+| **Live app** | [polynomo.vercel.app](https://polynomo.vercel.app/) |
 | **Pitch deck** | [Google Slides](https://docs.google.com/presentation/d/1oQ4SYGiB13yIv_4OXgAeuHIQbVPrgQGJKCBppa8C1C4/edit?usp=sharing) |
 | **GitHub** | [Polynomo](https://github.com/AmaanSayyad/Polynomo) |
 | **Demo Video** | [Demo](https://youtu.be/)
